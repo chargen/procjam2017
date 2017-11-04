@@ -194,6 +194,21 @@ function smoothPoints (points, iteration, smoothing) {
     return points;
 }
 
+function getTrackLength (points) {
+    var sum = 0,
+        p1,
+        p2;
+
+    for (var i = 0; i < points.length; i++) {
+        p1 = points[i];
+        p2 = points[(i + 1) % points.length];
+
+        sum += Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
+    }
+
+    return sum;
+}
+
 var zoom = 0.9;
 
 console.time('path generation');
@@ -202,6 +217,8 @@ var points = firstPass();
 points = normalizePoints(points);
 points = secondPass(points);
 points = smoothPoints(points, 40, 0.4);
+
+console.log('Track length :', getTrackLength(points));
 
 console.timeEnd('path generation');
 
