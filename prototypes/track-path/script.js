@@ -171,7 +171,7 @@ function secondPass (points) {
     );
 
     processedPoints = catRomSpline(processedPoints, {
-        samples: 12,
+        samples: 14,
         knot: 0.33
     });
 
@@ -180,14 +180,17 @@ function secondPass (points) {
     return processedPoints;
 }
 
-function smoothPoints (points, iteration, smoothing) {
+function smoothPoints (points, iteration, smoothing, zSmoothing) {
     var selfMultiplier = 1 - smoothing,
-        neighbourMultiplier = smoothing / 2;
+        neighbourMultiplier = smoothing / 2,
+        selfZMultiplier = 1 - zSmoothing,
+        neighbourZMultiplier = zSmoothing / 2;
 
     for (var i = 0; i < iteration; i++) {
         for (var k = 1; k < points.length - 1; k++) {
             points[k][0] = points[k][0] * selfMultiplier + points[k-1][0] * neighbourMultiplier + points[k+1][0] * neighbourMultiplier;
             points[k][1] = points[k][1] * selfMultiplier + points[k-1][1] * neighbourMultiplier + points[k+1][1] * neighbourMultiplier;
+            points[k][2] = points[k][2] * selfZMultiplier + points[k-1][2] * neighbourZMultiplier + points[k+1][2] * neighbourZMultiplier;
         }
     }
 
@@ -209,14 +212,105 @@ function getTrackLength (points) {
     return sum;
 }
 
-var zoom = 0.9;
+var noise = new noisejs.Noise(rng());
+
+function generateHeight (noise, x, y, size) {
+    var n1 = Math.pow((1 + noise.perlin2(x/200 * size,y/200 * size)) / 2, 2.5),
+        n2 = Math.pow((1 + noise.perlin2(x/100 * size + n1 * 0.6,y/100 * size - n1 * 0.6)) / 2, 1.5 + n1),
+        n3 = Math.pow((1 + noise.perlin2(x/50 * size - n2 * 1.5 + n1 * 0.6,y/50 * size + n2 * 1.5 - n1 * 0.6)) / 2, 1.0 + n2);
+
+    return Math.pow(Math.min((
+        n1 * 0.65 +
+        (0.6 + 0.4 * n1) * n2 * 0.25 +
+        (0.75 + 0.25 * n1) * n3 * 0.25
+    ), 1), 1.5);
+}
+
+function addZData (points) {
+    for (var i = 0; i < points.length; i++) {
+        points[i].push(generateHeight(noise, points[i][0], points[i][1], 200));
+    }
+
+    return points;
+}
+
+function addNData (points) {
+    var a, b, c, nx, ny, nl, rnl;
+    var ab, abl, bc, bcl, ac, acl;
+
+    for (var i = 0; i < points.length; i++) {
+        a = points[(i - 3 + points.length) % points.length];
+        b = points[i];
+        c = points[(i + 3) % points.length];
+
+        ab = [b[0] - a[0], b[1] - a[1]];
+        bc = [c[0] - b[0], c[1] - b[1]];
+        ac = [c[0] - a[0], c[1] - a[1]];
+        abl = Math.sqrt(Math.pow(ab[0], 2) + Math.pow(ab[1], 2));
+        bcl = Math.sqrt(Math.pow(bc[0], 2) + Math.pow(bc[1], 2));
+        acl = Math.sqrt(Math.pow(ac[0], 2) + Math.pow(ac[1], 2));
+        ab[0] /= abl;
+        ab[1] /= abl;
+        bc[0] /= bcl;
+        bc[1] /= bcl;
+        ac[0] /= acl;
+        ac[1] /= acl;
+
+        nx = (bc[0] - ab[0]) * -1;
+        ny = (bc[1] - ab[1]) * -1;
+        nl = Math.sqrt(Math.pow(nx, 2) + Math.pow(ny, 2));
+        nx /= nl;
+        ny /= nl;
+        rnl = ((Math.atan2(ac[1], ac[0]) - Math.atan2(ny, nx) + Math.PI * 4) % (Math.PI * 2)) - Math.PI;
+
+        b.push(nx, ny, Math.min(1, nl), rnl);
+    }
+
+    return points;
+}
+
+function smoothNData (points, iterations) {
+    var a, b, c, l;
+
+    for (var k = 0; k < iterations; k++) {
+        for (var i = 0; i < points.length; i++) {
+            a = points[(i - 1 + points.length) % points.length];
+            b = points[i];
+            c = points[(i + 1) % points.length];
+            b[5] = Math.max(b[5], b[5] * 0.8 + c[5] * 0.1 + a[5] * 0.1);
+        }
+    }
+
+    return points;
+}
+
+var zoom = 0.8;
+var offsetY = 50;
 
 console.time('path generation');
 
 var points = firstPass();
+
+/*
+points = [
+    [0,0],
+    [0.5, 0],
+    [0.5, 0.5],
+    [0, 0.5],
+    [0,0]
+];
+*/
+
 points = normalizePoints(points);
 points = secondPass(points);
-points = smoothPoints(points, 40, 0.4);
+console.log(JSON.stringify(points, null, 2));
+points = addZData(points);
+points = smoothPoints(points, 40, 0.4, 0.1);
+
+points = addNData(points);
+points = smoothNData(points, 50);
+
+console.log(points);
 
 console.log('Track length :', getTrackLength(points));
 
@@ -225,40 +319,85 @@ console.timeEnd('path generation');
 ctx.fillStyle = '#000000';
 ctx.fillRect(0,0,size * 2, size * 2);
 
+
+ctx.fillStyle = '#444444';
+ctx.strokeStyle = '#444444';
+ctx.lineWidth = 1.25;
+
+/*
+for (var i = 0; i < points.length; i++) {
+    var ni = (i + 1) % points.length;
+    ctx.beginPath();
+    ctx.moveTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 0) * zoom);
+    ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
+    ctx.lineTo(size + points[ni][0] * size * zoom, size + offsetY + (points[ni][1] * size - points[ni][2] * 300) * zoom);
+    ctx.lineTo(size + points[ni][0] * size * zoom, size + offsetY + (points[ni][1] * size - points[ni][2] * 0) * zoom);
+    ctx.fill();
+    ctx.stroke();
+}
+*/
+
 /**/
 
+/*
 ctx.strokeStyle = '#FFFFFF';
 ctx.lineWidth = 7.7;
 ctx.lineCap="round";
 ctx.lineJoin = "round";
 ctx.beginPath();
-ctx.moveTo(size + points[0][0] * size * zoom, size + points[0][1] * size * zoom);
+ctx.moveTo(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom);
 for (var i = 1; i < points.length; i++) {
-    ctx.lineTo(size + points[i][0] * size * zoom, size + points[i][1] * size * zoom);
+    ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
 }
 ctx.stroke();
 
 ctx.strokeStyle = '#000000';
 ctx.lineWidth = 3.5;
 ctx.beginPath();
-ctx.moveTo(size + points[0][0] * size * zoom, size + points[0][1] * size * zoom);
+ctx.moveTo(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom);
 for (var i = 1; i < points.length; i++) {
-    ctx.lineTo(size + points[i][0] * size * zoom, size + points[i][1] * size * zoom);
+    ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
+}
+ ctx.stroke();
+*/
+
+/*
+ctx.strokeStyle = '#FFFFFF';
+ctx.lineWidth = 2.25;
+ctx.beginPath();
+ctx.moveTo(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom);
+for (var i = 1; i < points.length; i++) {
+    ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
 }
 ctx.stroke();
+*/
+
+ctx.strokeStyle = '#FFFF00';
+ctx.lineWidth = 1.25;
+for (var i = 0; i < points.length; i++) {
+    ctx.fillStyle = points[i][6] > 0 ? '#0000FF' : '#FF0000';
+    ctx.fillRect(size + points[i][0] * size * zoom - 4, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom - 4, 8, 8);
+
+    ctx.beginPath();
+    ctx.moveTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
+    ctx.lineTo(size + (points[i][0] * size + points[i][3] * 100 * points[i][5]) * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300 + points[i][4] * 100 * points[i][5]) * zoom);
+    ctx.stroke();
+
+}
 
 /*/
 
 ctx.strokeStyle = '#FFFFFF';
 ctx.fillStyle = '#FFFFFF';
-ctx.lineWidth = 2.5;
+ctx.lineWidth = 5.5;
 ctx.beginPath();
-ctx.moveTo(size + points[0][0] * size * zoom, size + points[0][1] * size * zoom);
+ctx.moveTo(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom);
 for (var i = 1; i < points.length; i++) {
-    ctx.lineTo(size + points[i][0] * size * zoom, size + points[i][1] * size * zoom);
+    ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
     //ctx.fillRect(size + points[i][0] * size * zoom - 4, size + points[i][1] * size * zoom - 4, 8, 8);
 }
 ctx.stroke();
+
 
 /**/
 
@@ -266,6 +405,6 @@ ctx.stroke();
 ctx.fillStyle = '#FF0000';
 ctx.lineWidth = 2.;
 ctx.beginPath();
-ctx.arc(size + points[0][0] * size * zoom, size + points[0][1] * size * zoom, 9.5, 0, 2 * Math.PI, false);
+ctx.arc(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom, 9.5, 0, 2 * Math.PI, false);
 ctx.fill();
 ctx.stroke();
