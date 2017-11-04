@@ -1,0 +1,15 @@
+{
+  "name": "naming",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "generate-model": "ngram-word-generator corpus.txt --n=3 --minLength=4 --filter=noSymbols --compress --unique --excludeOriginal > model.json"
+  },
+  "author": "Kevin Chapelier",
+  "license": "MIT",
+  "dependencies": {
+    "ngram-word-generator": "^1.2.0"
+  }
+}
