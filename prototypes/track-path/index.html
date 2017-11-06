@@ -14,13 +14,18 @@
                 height:100vh;
                 width:auto;
             }
+
+            textarea { position:absolute; top:0;right:0;width:100px; height: 50px;}
         </style>
     </head>
     <body>
         <canvas id="canvas" width="1000" height="1000"></canvas>
+        <textarea id="textarea"></textarea>
         <script src="vendors/seed-random.min.js"></script>
         <script src="vendors/noisejs.min.js"></script>
         <script src="vendors/cat-rom-spline.min.js"></script>
+        <script>module = {exports: null};</script>
+        <script src="path-generator.js"></script>
         <script src="script.js"></script>
     </body>
 </html>

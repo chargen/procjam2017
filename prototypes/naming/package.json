@@ -10,6 +10,7 @@
   "author": "Kevin Chapelier",
   "license": "MIT",
   "dependencies": {
-    "ngram-word-generator": "^1.2.0"
+    "ngram-word-generator": "^1.2.0",
+    "seed-random": "^2.2.0"
   }
 }
