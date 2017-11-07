@@ -1,0 +1,17 @@
+{
+  "name": "plane",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Kevin Chapelier",
+  "license": "MIT",
+  "dependencies": {
+    "delaunay-triangulate": "^1.1.6",
+    "poisson-disk-sampling": "^1.0.2"
+  }
+}

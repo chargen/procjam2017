@@ -46,19 +46,15 @@ function init () {
     pathData.length = pathData.length - 2;
 
     var shape = [
-        -0.5, -10,
+        -0.5, 0,
         -0.5, 0.025,
         -0.4, 0,
-        -0.3, 0,
         -0.2, 0,
-        -0.1, 0,
         0, 0,
-        0.1, 0,
         0.2, 0,
-        0.3, 0,
         0.4, 0,
         0.5, 0.025,
-        0.5, -10
+        0.5, 0
     ];
 
     for (var k = 0; k < pathData.length; k++) {
@@ -67,33 +63,75 @@ function init () {
         var px = pathData[k][0] * size;
         var py = pathData[k][1] * size;
         var pz = pathData[k][2] * size;
-        var nx = pathData[k][3] * roadWidth * pathData[k][6];
-        var ny = pathData[k][4] * roadWidth * pathData[k][6];
-        var a = pathData[k][5] * pathData[k][6];
+        var nx = pathData[k][3] * roadWidth * Math.sign(pathData[k][6]);
+        var ny = pathData[k][4] * roadWidth * Math.sign(pathData[k][6]);
+        var a = Math.min(1, pathData[k][5]) * Math.sign(pathData[nk][6]);
         var npx = pathData[nk][0] * size;
         var npy = pathData[nk][1] * size;
         var npz = pathData[nk][2] * size;
-        var nnx = pathData[nk][3] * roadWidth * pathData[nk][6];
-        var nny = pathData[nk][4] * roadWidth * pathData[nk][6];
-        var na = pathData[nk][5] * pathData[nk][6];
+        var nnx = pathData[nk][3] * roadWidth * Math.sign(pathData[nk][6]);
+        var nny = pathData[nk][4] * roadWidth * Math.sign(pathData[nk][6]);
+        var na = Math.min(1, pathData[nk][5]) * Math.sign(pathData[nk][6]);
 
-        for (var i = 0; i < shape.length / 2 - 1; i++) {
+        var ca = Math.cos(a);
+        var sa = Math.sin(a);
+        var cna = Math.cos(na);
+        var sna = Math.sin(na);
+
+        var shapeSegments = shape.length / 2;
+        for (var i = 0; i < shapeSegments - 1; i++) {
+
+            var z0add = i === 0 ? -10 : 0;
+            var z1add = i === shapeSegments - 2 ? -10 : 0;
+
+            /**/
+            // glitchy road titling
+            var s0x = shape[i * 2];
+            var s0z = shape[i * 2 + 1];
+            var s1x = shape[(i + 1) * 2];
+            var s1z = shape[(i + 1) * 2 + 1];
+
+            var as0x = s0x * ca - s0z * sa;
+            var as0z = s0x * sa + s0z * ca;
+            var as1x = s1x * ca - s1z * sa;
+            var as1z = s1x * sa + s1z * ca;
+
+            var nas0x = s0x * cna - s0z * sna;
+            var nas0z = s0x * sna + s0z * cna;
+            var nas1x = s1x * cna - s1z * sna;
+            var nas1z = s1x * sna + s1z * cna;
+
+            var c0x = px + nx * as0x;
+            var c0y = py + ny * as0x;
+            var c0z = pz + as0z + z0add;
+            var c1x = px + nx * as1x;
+            var c1y = py + ny * as1x;
+            var c1z = pz + as1z + z1add;
+            var nc0x = npx + nnx * nas0x;
+            var nc0y = npy + nny * nas0x;
+            var nc0z = npz + nas0z + z0add;
+            var nc1x = npx + nnx * nas1x;
+            var nc1y = npy + nny * nas1x;
+            var nc1z = npz + nas1z + z1add;
+            /*/
+
             var s0x = shape[i * 2];
             var s0z = shape[i * 2 + 1];
             var s1x = shape[(i + 1) * 2];
             var s1z = shape[(i + 1) * 2 + 1];
             var c0x = px + nx * s0x;
             var c0y = py + ny * s0x;
-            var c0z = pz + s0z;
+            var c0z = pz + s0z + z0add;
             var c1x = px + nx * s1x;
             var c1y = py + ny * s1x;
-            var c1z = pz + s1z;
+            var c1z = pz + s1z + z1add;
             var nc0x = npx + nnx * s0x;
             var nc0y = npy + nny * s0x;
-            var nc0z = npz + s0z;
+            var nc0z = npz + s0z + z0add;
             var nc1x = npx + nnx * s1x;
             var nc1y = npy + nny * s1x;
-            var nc1z = npz + s1z;
+            var nc1z = npz + s1z + z1add;
+            /**/
 
             positions.push(
                 nc1x, nc1z, nc1y,
@@ -108,6 +146,7 @@ function init () {
     }
 
     console.log(positions.length / 3, positions.length / 9);
+    //console.log(positions);
     var geometry = new THREE.BufferGeometry();
     //geometry.setIndex(new THREE.BufferAttribute(new Uint16Array(indices), 1));
     geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));

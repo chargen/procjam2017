@@ -153,7 +153,7 @@ function secondPass (points, rng) {
     );
 
     processedPoints = catRomSpline(processedPoints, {
-        samples: 14,
+        samples: 15,
         knot: 0.33
     });
 
@@ -168,9 +168,9 @@ function generateHeight (noise, x, y, size) {
         n3 = Math.pow((1 + noise.perlin2(x/50 * size - n2 * 1.5 + n1 * 0.6,y/50 * size + n2 * 1.5 - n1 * 0.6)) / 2, 1.0 + n2);
 
     return Math.pow(Math.min((
-        n1 * 0.65 +
-        (0.6 + 0.4 * n1) * n2 * 0.25 +
-        (0.75 + 0.25 * n1) * n3 * 0.25
+    n1 * 0.65 +
+    (0.6 + 0.4 * n1) * n2 * 0.25 +
+    (0.75 + 0.25 * n1) * n3 * 0.25
     ), 1), 1.5);
 }
 
@@ -204,9 +204,9 @@ function addNData (points) {
     var ab, abl, bc, bcl, ac, acl;
 
     for (var i = 0; i < points.length; i++) {
-        a = points[(i - 3 + points.length) % points.length];
+        a = points[(i - 5 + points.length) % points.length];
         b = points[i];
-        c = points[(i + 3) % points.length];
+        c = points[(i + 5) % points.length];
 
         ab = [b[0] - a[0], b[1] - a[1]];
         bc = [c[0] - b[0], c[1] - b[1]];
@@ -228,7 +228,7 @@ function addNData (points) {
         ny /= nl;
         rnl = ((Math.atan2(ac[1], ac[0]) - Math.atan2(ny, nx) + Math.PI * 4) % (Math.PI * 2)) - Math.PI;
 
-        b.push(nx, ny, Math.min(1, nl), rnl);
+        b.push(nx, ny, Math.min(0.1, nl), rnl);
     }
 
     return points;
@@ -242,7 +242,13 @@ function smoothNData (points, iterations) {
             a = points[(i - 1 + points.length) % points.length];
             b = points[i];
             c = points[(i + 1) % points.length];
-            b[5] = Math.max(b[5], b[5] * 0.8 + c[5] * 0.1 + a[5] * 0.1);
+            if (Math.sign(b[6]) === Math.sign(a[6]) && Math.sign(b[6]) === Math.sign(c[6])) {
+                b[5] = b[5] * 0.5 + c[5] * 0.25 + a[5] * 0.25;
+            } else {
+                // this is to avoid weird glitch where the road of the curve change, ensure there are 2 segments with
+                // a tilting at 0 to make the transition
+                b[5] = 0;
+            }
         }
     }
 
@@ -255,12 +261,20 @@ function pathGenerator (seed) {
         points;
 
     points = firstPass(rng);
+    /*
+     points = [
+     [0,0],
+     [1,1],
+     [0,2],
+     [-1,1]
+     ];*/
+
     points = normalizePoints(points);
     points = secondPass(points, rng);
     points = addZData(points, noise);
     points = smoothPoints(points, 40, 0.4, 0.1);
     points = addNData(points);
-    points = smoothNData(points, 50);
+    points = smoothNData(points, 80);
 
     return points;
 }
