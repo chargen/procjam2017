@@ -17,7 +17,7 @@ function doesLinesIntersect(p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
     return (s >= 0 && s <= 1 && t >= 0 && t <= 1)
 }
 
-function checkForLineIntersections (points, newPoint) {
+function checkForLineIntersections (points, newPoint, firstSegment) {
     if (points.length < 2) return false;
 
     var l1x1 = points[points.length - 1][0],
@@ -29,7 +29,7 @@ function checkForLineIntersections (points, newPoint) {
     //console.log('-----');
     //console.log('Tested line : ', l1x1.toFixed(3), l1y1.toFixed(3), l1x2.toFixed(3), l1y2.toFixed(3));
 
-    for (var i = 1; i < points.length - 1; i++) {
+    for (var i = (firstSegment ? 1 : 2); i < points.length - 1; i++) {
         l2x1 = points[i-1][0];
         l2y1 = points[i-1][1];
         l2x2 = points[i][0];
@@ -46,6 +46,21 @@ function checkForLineIntersections (points, newPoint) {
     return false;
 }
 
+function getAngleDeviation (angle1, angle2) {
+    var pi = Math.PI,
+        pi2 = Math.PI * 2;
+
+    // euclidean modulo remapping angles to [0, PI*2[
+    angle1 = ((angle1 % pi2) + pi2) % pi2;
+    angle2 = ((angle2 % pi2) + pi2) % pi2;
+
+    var dev = (pi - Math.abs(Math.abs(angle1 - angle2) - pi)) / pi;
+
+    //console.log('angle1', angle1 * 180 / pi, 'angle2', angle2 * 180 / pi, 'dev', dev);
+
+    return dev;
+}
+
 function firstPass (rng) {
     var points = [
             [0, 0]
@@ -54,20 +69,48 @@ function firstPass (rng) {
         currentAngle = rng() * 6.28,
         pointsNumber = 12  + rng() * 6,
         retry = 0,
+        deviation,
         newAngle,
         distance,
         newDistance,
-        newPoint;
+        newPoint,
+        i = 0;
 
-    for (var i = 0; i < pointsNumber; i++) {
+    function reset () {
+        //console.log('reset');
+        points.length = 1;
+        previousPoint = points[0];
+        retry = 0;
+        i = 0;
+    }
+
+    while(true) {
+        i = i + 1;
+
+        if (i > pointsNumber) {
+            var angleToEnd = Math.atan2(points[0][1] - previousPoint[1], points[0][0] - previousPoint[0]);
+            var startAngle2 = Math.atan2(points[1][1] - points[0][1], points[1][0] - points[0][0]);
+
+            if (
+                getAngleDeviation(angleToEnd, currentAngle) < 0.6 &&
+                getAngleDeviation(angleToEnd, startAngle2) < 0.6 &&
+                !checkForLineIntersections(points, points[0], false)
+            ) {
+                points.push([points[0][0], points[0][1]]);
+                break;
+            } else {
+                // restart from the beginning
+                reset();
+            }
+        }
+
         distance = 0.1 + Math.pow(rng(), 1.333) * 0.5;
 
         do {
-            newAngle = (Math.pow(rng(), 0.8) * 0.5) * (rng() > 0.5 ? 1 : -1) * (0.9 + retry / 5);
-        } while(Math.abs(Math.abs(newAngle) - 1) < 0.4);
+            deviation = (Math.pow(rng(), 0.8) * 0.5) * (rng() > 0.5 ? 1 : -1) * (0.9 + retry / 5);
+        } while(Math.abs(Math.abs(deviation) - 1) < 0.4);
 
-        //console.log(newAngle);
-        newAngle = currentAngle + newAngle * Math.PI;
+        newAngle = currentAngle + deviation * Math.PI;
 
         newPoint = [
             previousPoint[0] + Math.cos(newAngle) * distance,
@@ -76,7 +119,7 @@ function firstPass (rng) {
 
         if (
             ((newPoint[0] >= 1 || newPoint[1] >= 1 || newPoint[0] <= -1 || newPoint[1] <= -1) && rng() < 0.85) ||
-            (checkForLineIntersections(points, newPoint) && rng() < 0.995)
+            checkForLineIntersections(points, newPoint, true)
         ) {
             //console.log('intersection !');
             i--;
@@ -88,9 +131,11 @@ function firstPass (rng) {
             distance = newDistance;
             retry = 0;
         }
-    }
 
-    points.push([points[0][0], points[0][1]]);
+        if (retry > 20) {
+            reset();
+        }
+    }
 
     return points;
 }
@@ -170,15 +215,47 @@ function generateHeight (noise, x, y, size) {
         n3 = Math.pow((1 + noise.perlin2(x/50 * size - n2 * 1.5 + n1 * 0.6,y/50 * size + n2 * 1.5 - n1 * 0.6)) / 2, 1.0 + n2);
 
     return Math.pow(Math.min((
-        n1 * 0.65 +
-        (0.6 + 0.4 * n1) * n2 * 0.25 +
-        (0.75 + 0.25 * n1) * n3 * 0.25
+    n1 * 0.65 +
+    (0.6 + 0.4 * n1) * n2 * 0.25 +
+    (0.75 + 0.25 * n1) * n3 * 0.25
     ), 1), 1.5);
 }
 
 function addZData (points, noise) {
     for (var i = 0; i < points.length; i++) {
         points[i].push(generateHeight(noise, points[i][0], points[i][1], 200));
+    }
+
+    return points;
+}
+
+function circDistance (a, b, l) {
+    return Math.min(Math.abs(l + a - b) % l, Math.abs(l - a + b) % l);
+}
+
+function easePoints (points, iterations, thresholdCirc, thresholdDist, easing) {
+    for (var l = 0; l < iterations; l++) {
+        for (var i = 0; i < points.length; i++) {
+            for (var k = 0; k < points.length; k++) {
+                var circDist = Math.max(0, circDistance(i, k, points.length) - thresholdCirc) / points.length;
+
+                if (circDist > 0) {
+                    // k to i
+                    var x = points[i][0] - points[k][0];
+                    var y = points[i][1] - points[k][1];
+                    var dist = Math.sqrt(x * x + y * y);
+                    x /= dist;
+                    y /= dist;
+
+                    if (thresholdDist > dist) {
+                        points[i][0] += easing * circDist * x * (thresholdDist - dist);
+                        points[i][1] += easing * circDist * y * (thresholdDist - dist);
+                    }
+
+                }
+
+            }
+        }
     }
 
     return points;
@@ -245,7 +322,7 @@ function smoothNData (points, iterations) {
             b = points[i];
             c = points[(i + 1) % points.length];
             if (Math.sign(b[6]) === Math.sign(a[6]) && Math.sign(b[6]) === Math.sign(c[6])) {
-                b[5] = b[5] * 0.5 + c[5] * 0.25 + a[5] * 0.25;
+                b[5] = b[5] * 0.6 + c[5] * 0.2 + a[5] * 0.2;
             } else {
                 // this is to avoid weird glitch where the road of the curve change, ensure there are 2 segments with
                 // a tilting at 0 to make the transition
@@ -263,16 +340,9 @@ function pathGenerator (seed) {
         points;
 
     points = firstPass(rng);
-    /*
-    points = [
-        [0,0],
-        [1,1],
-        [0,2],
-        [-1,1]
-    ];*/
-
     points = normalizePoints(points);
     points = secondPass(points, rng);
+    points = easePoints(points, 80, 20, 0.075, 0.05);
     points = addZData(points, noise);
     points = smoothPoints(points, 40, 0.4, 0.1);
     points = addNData(points);

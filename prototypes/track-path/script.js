@@ -53,8 +53,6 @@ ctx.fillRect(0,0,size * 2, size * 2);
 ctx.fillStyle = '#444444';
 ctx.strokeStyle = '#444444';
 ctx.lineWidth = 1.25;
-
-/*
 for (var i = 0; i < points.length; i++) {
     var ni = (i + 1) % points.length;
     ctx.beginPath();
@@ -65,11 +63,8 @@ for (var i = 0; i < points.length; i++) {
     ctx.fill();
     ctx.stroke();
 }
-*/
 
-/**/
 
-/*
 ctx.strokeStyle = '#FFFFFF';
 ctx.lineWidth = 7.7;
 ctx.lineCap="round";
@@ -88,20 +83,25 @@ ctx.moveTo(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * s
 for (var i = 1; i < points.length; i++) {
     ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
 }
- ctx.stroke();
-*/
+ctx.stroke();
+
 
 /*
+ctx.font = '48px serif';
+ctx.fillStyle = '#FFFFFF';
 ctx.strokeStyle = '#FFFFFF';
 ctx.lineWidth = 2.25;
 ctx.beginPath();
 ctx.moveTo(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom);
-for (var i = 1; i < points.length; i++) {
-    ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
+for (var i = 0; i < points.length; i++) {
+    //ctx.fillRect(size + points[i][0] * size * zoom,size + points[i][1] * size * zoom,3,3);
+    //ctx.fillText(i, size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
+    //ctx.lineTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
 }
 ctx.stroke();
 */
 
+/*
 ctx.strokeStyle = '#FFFF00';
 ctx.lineWidth = 1.25;
 for (var i = 0; i < points.length; i++) {
@@ -110,10 +110,11 @@ for (var i = 0; i < points.length; i++) {
 
     ctx.beginPath();
     ctx.moveTo(size + points[i][0] * size * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300) * zoom);
-    ctx.lineTo(size + (points[i][0] * size + points[i][3] * 100 * points[i][5]) * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300 + points[i][4] * 100 * points[i][5]) * zoom);
+    ctx.lineTo(size + (points[i][0] * size + points[i][3] * 1000 * points[i][5]) * zoom, size + offsetY + (points[i][1] * size - points[i][2] * 300 + points[i][4] * 1000 * points[i][5]) * zoom);
     ctx.stroke();
 
 }
+*/
 
 /*/
 
@@ -138,5 +139,6 @@ ctx.beginPath();
 ctx.arc(size + points[0][0] * size * zoom, size + offsetY + (points[0][1] * size - points[0][2] * 300) * zoom, 9.5, 0, 2 * Math.PI, false);
 ctx.fill();
 ctx.stroke();
+
 
 textarea.value = JSON.stringify(points, null, 4);

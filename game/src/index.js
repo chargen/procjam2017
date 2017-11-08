@@ -2,11 +2,15 @@
 
 console.log(1);
 
+require('./hacks');
+
 var GameLoop = require('migl-gameloop/src/flexible'),
     Player = require('./game/entities/player'),
     fullscreen = require('./game/fullscreen'),
     input = require('./game/input'),
     renderer = require('./game/renderer');
+
+var roadMaterial = require('./game/materials/road');
 
 var pathGenerator = require('./generation/path-generator'),
     nameGenerator = require('./generation/name-generator');
@@ -18,7 +22,12 @@ function init () {
         debugCmd = input.commands.debug,
         soundCmd = input.commands.sound;
 
-    var seed = 'a';// + Math.random();
+    var seed = '';
+    var map = 'azertyuiopqsdfghjklmwxcvbnAZERTYUIOPQSDFGHJKLMWXCVBN1234567890'.split('');
+
+    for (var i = 0; i < 10; i++) {
+        seed += map[Math.random() * map.length | 0];
+    }
 
     var pathData = pathGenerator(seed);
     var name = nameGenerator(seed);
@@ -153,7 +162,7 @@ function init () {
     geometry.computeVertexNormals();
 
 
-    var mesh = new THREE.Mesh(geometry, new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }));
+    var mesh = new THREE.Mesh(geometry, roadMaterial() /* new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }) */);
     renderer.addElement(mesh);
 
     document.body.addEventListener('keyup', function (e) {
@@ -165,7 +174,7 @@ function init () {
     });
 
     window.addEventListener('resize', function resize () {
-        renderer.resize(window.innerWidth, window.innerHeight, 1, 1);
+        renderer.resize(window.innerWidth, window.innerHeight, 1., 1.);
     });
 
     var player = new Player(input);

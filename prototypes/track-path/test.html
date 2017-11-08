@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head lang="en">
+        <meta charset="UTF-8">
+        <title>Track Path prototype</title>
+        <style>
+            body {
+                margin:0;
+                padding:0;
+                background:black;
+            }
+
+            canvas {
+                height:100vh;
+                width:auto;
+            }
+
+            textarea { position:absolute; top:0;right:0;width:100px; height: 50px;}
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="1000" height="1000"></canvas>
+        <script>
+            var c = document.getElementById('canvas');
+            var x = c.getContext('2d');
+            x.lineWidth = 2.5;
+            x.strokeStyle = '#FFFFFF';
+            var C = Math.cos;
+            var S = Math.sin;
+
+            var i = 0;
+
+            var PI = Math.PI,
+                PIm2 = Math.PI * 2,
+                PId2 = Math.PI / 2;
+
+            var running = true;
+
+            c.addEventListener('click', function () { running = !running; });
+
+            setInterval(function () {
+                if (running) {
+                    i += 0.01;
+                    var angle1 = i;
+                    var angle2 = Math.PI * i * 1.55;
+
+                    angle1 = angle1 % (PIm2);
+                    angle2 = angle2 % (PIm2);
+
+                    var X = 500,
+                            Y = 500;
+
+                    x.clearRect(0, 0, 1000, 1000);
+
+                    x.beginPath();
+                    x.moveTo(X, Y);
+
+                    X += C(angle1) * 300;
+                    Y += S(angle1) * 300;
+
+                    x.lineTo(X, Y);
+
+                    X += C(angle2) * 200;
+                    Y += S(angle2) * 200;
+                    x.lineTo(X, Y);
+
+                    x.stroke();
+
+
+                    //var dev = Math.abs(Math.min(Math.abs(angle1 - angle2), Math.abs(angle2 - angle1)) - PI);
+                    var dev = Math.abs(Math.abs(angle1 - angle2) - PI);
+                    console.log('angle1', angle1 * 180 / PI, 'angle2', angle2 * 180 / PI, 'dev', dev * 180 / PI);
+                    console.log();
+                }
+            }, 100);
+        </script>
+    </body>
+</html>
