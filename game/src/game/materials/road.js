@@ -5,7 +5,8 @@ precision mediump float;
 
 varying vec3 vFresnelPosition;
 varying vec3 vFresnelNormal;
-//varying float vHeight;
+varying vec3 vPosition;
+varying vec2 vUv;
 
 //uniform sampler2D tSky;
 //uniform vec2 iResolution;
@@ -30,9 +31,12 @@ void main () {
     float dist = clamp((200. - abs(length(vFresnelPosition) - 200.)) / 200., 0., 1.);
     float fresnel = sampleFresnel(dist) * (1.8 - length(vFresnelPosition.xz) / 2000. - abs(vFresnelPosition.y) / 300.);
 
-    vec3 fogColor = vec3(0.0, 0.0, 0.0); //texture2D(tSky, gl_FragCoord.xy / iResolution)
+    vec3 fogColor = vec3(0.); //texture2D(tSky, gl_FragCoord.xy / iResolution)
 
     vec3 colorStructure = mix(vec3(1., 1., 1.),vFresnelNormal,fresnel*0.5) * (0.05 + pow(max(0., fresnel - 0.05), 0.8));
+
+    float fog = pow(clamp(vPosition.y + 2. - vUv.y, 0., 1.), 1.2);
+    colorStructure = mix(fogColor, colorStructure, fog);
 
     gl_FragColor = vec4(colorStructure, 1.);
 }
@@ -43,6 +47,7 @@ precision mediump float;
 
 attribute vec3 position;
 attribute vec3 normal;
+attribute vec2 uv;
 
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
@@ -52,9 +57,13 @@ uniform vec3 cameraPosition;
 
 varying vec3 vFresnelPosition;
 varying vec3 vFresnelNormal;
+varying vec3 vPosition;
+varying vec2 vUv;
 //varying float vHeight;
 
 void main () {
+    vUv = uv;
+    vPosition = position;
     vFresnelNormal = normalize(normalMatrix * normal);
 
     vec4 modelPos = modelViewMatrix * vec4(position, 1.0);
@@ -66,7 +75,7 @@ void main () {
 }
 `;
 
-module.exports = function makeMaterial (foggy) {
+module.exports = function makeMaterial () {
     return new THREE.RawShaderMaterial({
         uniforms: {
             //iResolution: { type: 'v2', value: new THREE.Vector2(window.innerWidth, window.innerHeight) },

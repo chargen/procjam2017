@@ -46,6 +46,7 @@ function init () {
 
     var positions = [];
     var normals = [];
+    var uvs = [];
 
     var size = 5;
     var roadWidth = 0.15;
@@ -86,6 +87,8 @@ function init () {
         var sa = Math.sin(a);
         var cna = Math.cos(na);
         var sna = Math.sin(na);
+
+        console.log(pz, npz);
 
         var shapeSegments = shape.length / 2;
         for (var i = 0; i < shapeSegments - 1; i++) {
@@ -151,6 +154,16 @@ function init () {
                 nc0x, nc0z, nc0y,
                 c0x, c0z, c0y
             );
+
+            uvs.push(
+                0, npz,
+                0, npz,
+                0, pz,
+
+                0, pz,
+                0, npz,
+                0, pz
+            );
         }
     }
 
@@ -159,7 +172,10 @@ function init () {
     var geometry = new THREE.BufferGeometry();
     //geometry.setIndex(new THREE.BufferAttribute(new Uint16Array(indices), 1));
     geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
     geometry.computeVertexNormals();
+
+    console.log(geometry);
 
 
     var mesh = new THREE.Mesh(geometry, roadMaterial() /* new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }) */);
